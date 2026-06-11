@@ -29,3 +29,8 @@ kaleido>=0.2.1
 tqdm>=4.65.0
 requests>=2.31.0
 beautifulsoup4>=4.12.0
+
+# Portfolio Simulator (Task 4)
+# All core deps (numpy, pandas, scipy, yfinance, plotly) already listed above.
+# python-dateutil is a transitive dependency of pandas — no explicit pin needed.
+pytest>=7.4.0

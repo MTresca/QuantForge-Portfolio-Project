@@ -35,11 +35,24 @@ quantforge-toolkit/
 │   │   ├── correlation.py       # Sentiment-to-price correlation engine
 │   │   └── run_sentiment.py     # Entry point: analyze & correlate
 │   │
+│   ├── portfolio_simulator/     # Task 4: Portfolio Simulation & Assistant
+│   │   ├── __init__.py
+│   │   ├── config.py            # All constants and configuration
+│   │   ├── portfolio.py         # Portfolio, Position, MonthlySnapshot classes
+│   │   ├── simulator.py         # Month-by-month simulation engine
+│   │   ├── rebalancer.py        # Periodic rebalancing with BL/Markowitz
+│   │   ├── risk_dashboard.py    # Risk metrics panel + Plotly charts
+│   │   ├── monte_carlo.py       # GBM forward projection (1 000 paths)
+│   │   ├── reporter.py          # Monthly HTML report generator
+│   │   ├── assistant.py         # Interactive CLI portfolio assistant
+│   │   └── run_simulator.py     # Entry point: simulate + assistant
+│   │
 │   └── utils/
 │       ├── __init__.py
 │       └── logger.py            # Centralized logging configuration
 │
 ├── tests/
+│   └── test_portfolio_simulator.py
 ├── requirements.txt
 ├── setup.py
 └── README.md
@@ -111,7 +124,74 @@ python -m quantforge.portfolio_optimizer.run_optimizer
 
 # Task 3: Run sentiment analysis
 python -m quantforge.sentiment_analyzer.run_sentiment
+
+# Task 4: Run portfolio simulation (2022–today, quarterly rebalance)
+python -m quantforge.portfolio_simulator.run_simulator simulate \
+    --start 2022-01-01 \
+    --tickers AAPL MSFT SPY QQQ BND \
+    --weights 0.25 0.20 0.25 0.15 0.15 \
+    --rebalance quarterly \
+    --assistant
+
+# Task 4: Launch assistant on a saved portfolio
+python -m quantforge.portfolio_simulator.run_simulator assistant \
+    --state portfolio_state.json
 ```
+
+---
+
+## Task 4 — Portfolio Simulator & Assistant
+
+### Overview
+
+Simulates a real **€100,000 virtual portfolio** over any historical window
+and provides an intelligent CLI assistant for interactive analysis.
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| **Portfolio State** | Persistent JSON state (positions, cash, P&L, history) |
+| **Monthly Simulation** | Step month-by-month with real yfinance OHLCV prices |
+| **Rebalancing** | Monthly/quarterly rebalancing using Max-Sharpe or Black-Litterman |
+| **Risk Dashboard** | Sharpe, Sortino, Max Drawdown, VaR, CVaR, rolling metrics |
+| **Monte Carlo** | GBM forward projection (1 000 paths, 6M/12M/24M horizons) |
+| **HTML Reports** | Self-contained monthly report with embedded Plotly charts |
+| **CLI Assistant** | Natural-language CLI for portfolio Q&A and chart generation |
+
+### CLI Assistant Commands
+
+```
+how is my portfolio          — current risk dashboard
+worst month / best month     — historical extremes
+should i rebalance?          — BL/Markowitz rebalancing recommendation
+show me my drawdown chart    — equity + drawdown interactive chart
+show allocation              — asset allocation pie chart
+what is my exposure to tech? — sector breakdown
+run sentiment analysis       — FinBERT on current holdings
+simulate next 6 months       — Monte Carlo GBM fan chart
+generate report              — monthly HTML report
+help                         — list all commands
+```
+
+### Theoretical Background
+
+**Monthly Simulation Engine:**
+The simulator fetches end-of-month adjusted close prices and uses them
+to mark the portfolio to market at each period. End-of-month pricing
+mirrors standard fund NAV reporting and smooths intra-month noise.
+
+**GBM Monte Carlo:**
+Forward projections use the log-normal GBM model:
+`V_{t+1} = V_t × exp[(μ - σ²/2) + σ × ε]`
+where μ and σ are estimated from the portfolio's own monthly return history.
+The 10th/50th/90th percentile fan quantifies the range of plausible outcomes.
+
+**Dynamic Rebalancing:**
+When `--rebalance-mode dynamic` is selected, the rebalancer estimates
+expected returns and covariances from the trailing 12 months of snapshots,
+then calls either `MarkowitzOptimizer.maximize_sharpe()` or
+`BlackLittermanModel.optimize()` to derive new target weights each period.
 
 ---
 
